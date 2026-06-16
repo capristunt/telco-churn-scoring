@@ -1,0 +1,36 @@
+# ---- Données ----
+data/*
+!data/raw/
+data/raw/*
+!data/raw/telco_customer_churn.csv
+
+# ---- Modeles ----
+models/*
+!models/.gitkeep
+
+# ---- Figures générées ----
+reports/figures/*
+!reports/figures/.gitkeep
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# ---- Environnement virtuel ----
+.venv/
+venv/
+env/
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+
+# ---- IDE / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---- Divers ----
+*.log
+.env
