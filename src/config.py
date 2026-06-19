@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # Paths
 DATA_RAW = ROOT / "data" / "raw" / "telco_customer_churn.csv"
+DATA_PROCESSED = ROOT / "data" / "processed"
 MODELS_DIR = ROOT / "models"
 REPORTS_DIR = ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
