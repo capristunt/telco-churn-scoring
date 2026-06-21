@@ -25,9 +25,9 @@ SERVICE_COLS = [
 NO_SERVICE_VALUES = {"No", "No phone service", "No internet service"}
 
 # Colonnes utilisées comme features par le modèle
-NUM_COLS = ["tenure", "MonthlyCharges", "TotalCharges", "nb_services", "SeniorCitizen"]
+NUM_COLS = ["tenure", "MonthlyCharges", "TotalCharges", "nb_services"]
 CAT_COLS = [
-    "Partner", "Dependents", "MultipleLines", "InternetService",
+    "SeniorCitizen", "Partner", "Dependents", "MultipleLines", "InternetService",
     "OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport",
     "StreamingTV", "StreamingMovies", "Contract", "PaperlessBilling", "PaymentMethod",
 ]
