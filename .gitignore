@@ -8,10 +8,6 @@ data/raw/*
 models/*
 !models/.gitkeep
 
-# ---- Figures générées ----
-reports/figures/*
-!reports/figures/.gitkeep
-
 # ---- Python ----
 __pycache__/
 *.py[cod]
