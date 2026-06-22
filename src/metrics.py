@@ -1,12 +1,14 @@
 """Métriques d'évaluation et fonctions de reporting pour le scoring de churn."""
 import numpy as np
+import pandas as pd
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import (
     roc_auc_score, average_precision_score,
     confusion_matrix, classification_report,
 )
 
 
-def recall_precision_at_k(y_true, y_proba, k=0.10):
+def recall_precision_at_k(y_true: pd.Series, y_proba: pd.Series, k: float = 0.10,) -> tuple[float, float]:
     """Recall et precision sur les top k% des scores les plus élevés.
 
     Métriques alignées sur la stratégie de ciblage top K% sous budget marketing.
@@ -20,7 +22,7 @@ def recall_precision_at_k(y_true, y_proba, k=0.10):
     return recall, precision
 
 
-def evaluate(name, pipe, X, y, k=0.10, verbose=True):
+def evaluate(name: str, pipe: Pipeline, X: pd.DataFrame, y: pd.Series, k: float = 0.10,verbose: bool = True,) -> pd.Series:
     """Évalue une Pipeline sur (X, y) et retourne un dict des métriques clés.
 
     Métriques calculées : ROC-AUC, PR-AUC, recall@k, precision@k.
@@ -45,10 +47,64 @@ def evaluate(name, pipe, X, y, k=0.10, verbose=True):
         print(confusion_matrix(y, y_pred))
         print()
 
-    return {
-        "name": name,
-        "roc_auc": roc_auc,
-        "pr_auc": pr_auc,
-        f"recall_{int(k*100)}": recall_k,
-        f"precision_{int(k*100)}": precision_k,
-    }
+    return pd.Series(
+        {
+            "roc_auc": roc_auc,
+            "pr_auc": pr_auc,
+            f"recall_{int(k*100)}": recall_k,
+            f"precision_{int(k*100)}": precision_k,
+        },
+        name=name,
+    )
+
+def expected_gain(
+    y_true: pd.Series,
+    y_proba: pd.Series,
+    threshold: float,
+    offer_cost: float = 15.0,
+    saved_value: float = 120.0,
+) -> float:
+    """Gain espéré d'une campagne de rétention au seuil donné.
+
+    Le client est contacté si ``y_proba >= threshold``. Coût d'offre fixe par contact,
+    valeur sauvée uniquement si le client allait churner. Formule :
+
+        gain = saved_value × TP - offer_cost × (TP + FP)
+             = (saved_value - offer_cost) × TP - offer_cost × FP
+    """
+    y_pred = (y_proba >= threshold).astype(int)
+    y_true_arr = y_true.values if hasattr(y_true, "values") else y_true
+    tp = int(((y_pred == 1) & (y_true_arr == 1)).sum())
+    fp = int(((y_pred == 1) & (y_true_arr == 0)).sum())
+    return (saved_value - offer_cost) * tp - offer_cost * fp
+
+
+def find_optimal_threshold(
+    y_true: pd.Series,
+    y_proba: pd.Series,
+    offer_cost: float = 15.0,
+    saved_value: float = 120.0,
+    n_steps: int = 1001,
+) -> pd.DataFrame:
+    """Balaye n_steps seuils de 0 à 1 et calcule gain, n_contacts, TP, FP par seuil.
+
+    Retourne un DataFrame trié par seuil croissant, exploitable pour tracer la courbe
+    gain vs seuil et localiser l'argmax via ``df.loc[df["gain"].idxmax()]``.
+    """
+    thresholds = np.linspace(0.0, 1.0, n_steps)
+    y_true_arr = y_true.values if hasattr(y_true, "values") else y_true
+
+    records = []
+    for s in thresholds:
+        y_pred = (y_proba >= s).astype(int)
+        tp = int(((y_pred == 1) & (y_true_arr == 1)).sum())
+        fp = int(((y_pred == 1) & (y_true_arr == 0)).sum())
+        gain = (saved_value - offer_cost) * tp - offer_cost * fp
+        records.append({
+            "threshold": s,
+            "n_contacts": tp + fp,
+            "tp": tp,
+            "fp": fp,
+            "gain": gain,
+        })
+    return pd.DataFrame(records)
