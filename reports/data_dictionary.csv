@@ -18,5 +18,5 @@ Contract,Type de contrat (Month-to-month/One year/Two year),object,Month-to-mont
 PaperlessBilling,Facturation dématérialisée (Yes/No),object,Yes,2,0
 PaymentMethod,Moyen de paiement (4 modalités),object,Electronic check,4,0
 MonthlyCharges,Montant facturé mensuellement (€),float64,29.85,1585,0
-TotalCharges,Montant total facturé depuis le début (€) — LU EN TEXTE,object,29.85,6531,0
+TotalCharges,Montant total facturé depuis le début (€),object,29.85,6531,0
 Churn,CIBLE : le client a résilié (Yes/No),object,No,2,0

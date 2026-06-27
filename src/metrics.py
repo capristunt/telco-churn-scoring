@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import (
     roc_auc_score, average_precision_score,
     confusion_matrix, classification_report,
@@ -108,3 +109,25 @@ def find_optimal_threshold(
             "gain": gain,
         })
     return pd.DataFrame(records)
+
+def compute_vif(frame: pd.DataFrame) -> pd.Series:
+    """Compute the Variance Inflation Factor for each column.
+
+    VIF_j = 1 / (1 - R²_j), where R²_j is the coefficient of
+    determination obtained by regressing column j on all the others.
+    A VIF above 5-10 signals problematic multicollinearity.
+
+    Args:
+        frame: DataFrame of numeric features without missing values.
+
+    Returns:
+        Series of VIF values indexed by column name, sorted descending.
+    """
+    vif = {}
+    cols = list(frame.columns)
+    for col in cols:
+        others = [c for c in cols if c != col]
+        model = LinearRegression().fit(frame.loc[:, others], frame.loc[:, col])
+        r2 = model.score(frame.loc[:, others], frame.loc[:, col])
+        vif[col] = 1.0 / (1.0 - r2) if r2 < 1.0 else np.inf
+    return pd.Series(vif).sort_values(ascending=False)
