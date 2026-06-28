@@ -5,8 +5,8 @@ de manière à ce que les notebooks 02 (baseline) et 03 (finetuning) partagent
 strictement la même préparation. Cela garantit qu'une comparaison de modèles
 ne reflète que des différences d'estimateur, pas de preprocessing.
 """
+import itertools
 from pathlib import Path
-from typing import Tuple
 
 import pandas as pd
 from sklearn.compose import ColumnTransformer
@@ -55,7 +55,7 @@ def prepare(df: pd.DataFrame) -> pd.DataFrame:
         DataFrame nettoyé, prêt à être passé au ColumnTransformer.
     """
     df = df.copy()
-    df = df.drop(columns=["gender"])
+    df = df.drop(columns=["gender", "TotalCharges"])
     df = df[df["tenure"] > 0]
     df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce")
     df["nb_services"] = df[SERVICE_COLS].apply(
@@ -65,7 +65,8 @@ def prepare(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def load_splits() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_splits(split_names: list[str] = ["train", "valid", "test"]) -> list[pd.DataFrame]:
+
     """Recharge le brut, reconstitue les splits par jointure sur les IDs persistés,
     applique ``prepare`` aux trois ensembles, et vérifie l'absence de chevauchement.
 
@@ -73,28 +74,30 @@ def load_splits() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     contiennent que des listes d'IDs, ce qui évite toute désync entre données
     et partition.
 
+    Args:
+        split_names: Noms des splits à charger, dans l'ordre souhaité en retour.
+
     Returns:
-        Tuple ``(train_df, valid_df, test_df)`` contenant les trois ensembles
-        nettoyés et enrichis des features dérivées.
+        Tuple de DataFrames nettoyés dans l'ordre de ``split_names``.
 
     Raises:
         AssertionError: Si un ``customerID`` apparaît dans deux ensembles à la fois.
     """
+
     df = pd.read_csv(DATA_RAW)
 
-    ids_train = pd.read_csv(DATA_PROCESSED / "split_train.csv")["customerID"]
-    ids_valid = pd.read_csv(DATA_PROCESSED / "split_valid.csv")["customerID"]
-    ids_test = pd.read_csv(DATA_PROCESSED / "split_test.csv")["customerID"]
+    ids = {
+        name: set(pd.read_csv(DATA_PROCESSED / f"split_{name}.csv")["customerID"])
+        for name in split_names
+    }
 
-    assert set(ids_train) & set(ids_valid) == set(), "Chevauchement train/valid"
-    assert set(ids_train) & set(ids_test) == set(), "Chevauchement train/test"
-    assert set(ids_valid) & set(ids_test) == set(), "Chevauchement valid/test"
+    for a, b in itertools.combinations(split_names, 2):
+        assert ids[a] & ids[b] == set(), f"Chevauchement {a}/{b}"
 
-    train_df = prepare(df[df["customerID"].isin(ids_train)])
-    valid_df = prepare(df[df["customerID"].isin(ids_valid)])
-    test_df = prepare(df[df["customerID"].isin(ids_test)])
-
-    return train_df, valid_df, test_df
+    return tuple(
+        prepare(df[df["customerID"].isin(ids[name])])
+        for name in split_names
+    )
 
 
 def build_preprocessor() -> ColumnTransformer:
