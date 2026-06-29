@@ -25,7 +25,7 @@ SERVICE_COLS = [
 NO_SERVICE_VALUES = {"No", "No phone service", "No internet service"}
 
 # Colonnes utilisées comme features par le modèle
-NUM_COLS = ["tenure", "MonthlyCharges", "TotalCharges", "nb_services"]
+NUM_COLS = ["tenure", "MonthlyCharges", "nb_services"]
 CAT_COLS = [
     "SeniorCitizen", "Partner", "Dependents", "MultipleLines", "InternetService",
     "OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport",
@@ -33,20 +33,21 @@ CAT_COLS = [
 ]
 FEATURES = NUM_COLS + CAT_COLS
 
+# Colones retirées avant modélisation, justifications dans l'EDA
+REMOVED_COLS = ["gender", "TotalCharges"]
+
 # Colonnes exclues de la modélisation, justifications dans l'EDA
 # customerID : identifiant, gender et PhoneService : Cramér's V proche de 0
-EXCLUDED_COLS = ["customerID", "gender", "PhoneService"]
-
+EXCLUDED_COLS = ["customerID", "PhoneService"]
 
 def prepare(df: pd.DataFrame) -> pd.DataFrame:
     """Nettoyage pré-Pipeline et création des features dérivées.
 
     Opérations effectuées dans cet ordre :
-        1. Retrait de la colonne ``gender`` (non informative).
-        2. Retrait des clients à ``tenure = 0``.
-        3. Conversion de ``TotalCharges`` en numérique.
-        4. Calcul de la feature ``nb_services``.
-        5. Encodage binaire de la cible dans la colonne ``churn_bin``.
+        - Retrait des colonnes ``gender`` et ``TotalCharges`` (voir EDA).
+        - Retrait des clients à ``tenure = 0``.
+        - Calcul de la feature ``nb_services``.
+        - Encodage binaire de la cible dans la colonne ``churn_bin``.
 
     Args:
         df: DataFrame brut tel que chargé depuis le CSV source.
@@ -55,13 +56,12 @@ def prepare(df: pd.DataFrame) -> pd.DataFrame:
         DataFrame nettoyé, prêt à être passé au ColumnTransformer.
     """
     df = df.copy()
-    df = df.drop(columns=["gender", "TotalCharges"])
+    df = df.drop(columns=REMOVED_COLS)
     df = df[df["tenure"] > 0]
-    df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce")
-    df["nb_services"] = df[SERVICE_COLS].apply(
+    df.loc[:, "nb_services"] = df[SERVICE_COLS].apply(
         lambda row: sum(v not in NO_SERVICE_VALUES for v in row), axis=1
     )
-    df["churn_bin"] = (df[TARGET] == "Yes").astype(int)
+    df.loc[:, "churn_bin"] = (df[TARGET] == "Yes").astype(int)
     return df
 
 
